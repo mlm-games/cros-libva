@@ -252,7 +252,7 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
         Ok(surfaces)
     }
 
-    pub(crate) fn display(&self) -> &Arc<Display> {
+    pub fn display(&self) -> &Arc<Display> {
         &self.display
     }
 
