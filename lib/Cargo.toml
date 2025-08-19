@@ -12,6 +12,7 @@ readme.workspace = true
 [features]
 dlopen = []
 vendored = []
+intel-protected-content-headers = []
 
 [dependencies]
 thiserror = "1"
