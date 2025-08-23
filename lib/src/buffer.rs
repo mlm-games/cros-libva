@@ -294,6 +294,14 @@ impl Buffer {
                     std::mem::size_of_val(wrapper.inner_mut()),
                 ),
             },
+            BufferType::EncPackedHeaderParameter(ref mut wrapper) => (
+                wrapper.inner_mut() as *mut _ as *mut std::ffi::c_void,
+                std::mem::size_of_val(wrapper.inner_mut()),
+            ),
+
+            BufferType::EncPackedHeaderData(ref data) => {
+                (data.as_ptr() as *mut std::ffi::c_void, data.len())
+            }
         };
 
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
@@ -368,6 +376,10 @@ pub enum BufferType {
     ProcPipelineParameter(proc_pipeline::ProcPipelineParameterBuffer),
     /// Abstraction over `VAQMatrixBufferType`.
     QMatrix(QMatrix),
+    /// Abstraction over `VAEncPackedHeaderParameterBufferType`.
+    EncPackedHeaderParameter(EncPackedHeaderParameter),
+    /// Abstraction over `VAEncPackedHeaderDataBufferType`.
+    EncPackedHeaderData(Vec<u8>),
 }
 
 impl BufferType {
@@ -404,7 +416,16 @@ impl BufferType {
             BufferType::ProcPipelineParameter(_) => {
                 bindings::VABufferType::VAProcPipelineParameterBufferType
             }
+
             BufferType::QMatrix(_) => bindings::VABufferType::VAQMatrixBufferType,
+
+            BufferType::EncPackedHeaderParameter(_) => {
+                bindings::VABufferType::VAEncPackedHeaderParameterBufferType
+            }
+
+            BufferType::EncPackedHeaderData(_) => {
+                bindings::VABufferType::VAEncPackedHeaderDataBufferType
+            }
         }
     }
 }
@@ -627,4 +648,37 @@ pub enum EncMiscParameter {
     QualityLevel(EncMiscParameterBufferQualityLevel),
     /// Wrapper over `VAEncMiscParameterBuffer` with `VAEncMiscParameterQuantization`.
     Quantization(EncMiscParameterQuantization),
+}
+
+/// Abstraction over the `VAEncPackedHeaderType` enum values we support.
+#[repr(u32)]
+pub enum EncPackedHeaderType {
+    /// Sequence header
+    Sequence = bindings::VAEncPackedHeaderType::VAEncPackedHeaderSequence,
+    /// Picture header
+    Picture = bindings::VAEncPackedHeaderType::VAEncPackedHeaderPicture,
+    /// Slice header
+    Slice = bindings::VAEncPackedHeaderType::VAEncPackedHeaderSlice,
+    /// Raw data
+    RawData = bindings::VAEncPackedHeaderType::VAEncPackedHeaderRawData,
+}
+
+/// Abstraction over `EncPackedHeaderParameterBuffer` types we support
+pub struct EncPackedHeaderParameter(Box<bindings::VAEncPackedHeaderParameterBuffer>);
+
+impl EncPackedHeaderParameter {
+    /// Creates a new `EncPackedHeaderParameter` from the given `VAEncPackedHeaderParameterBuffer`.
+    pub fn new(type_: EncPackedHeaderType, length_in_bits: u32, has_emulation: bool) -> Self {
+        Self(Box::new(bindings::VAEncPackedHeaderParameterBuffer {
+            type_: type_ as _,
+            bit_length: length_in_bits,
+            has_emulation_bytes: has_emulation as u8,
+            ..Default::default()
+        }))
+    }
+
+    /// Returns a mutable reference to the inner `VAEncPackedHeaderParameterBuffer`.
+    pub fn inner_mut(&mut self) -> &mut bindings::VAEncPackedHeaderParameterBuffer {
+        &mut self.0
+    }
 }
