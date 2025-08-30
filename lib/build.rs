@@ -105,6 +105,7 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(libva_1_20_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_19_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_16_or_higher)");
+    println!("cargo::rustc-check-cfg=cfg(libva_1_15_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_14_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_10_or_higher)");
 
@@ -120,6 +121,9 @@ fn main() {
     }
     if va_check_version(1, 16) {
         println!("cargo::rustc-cfg=libva_1_16_or_higher")
+    }
+    if va_check_version(1, 15) {
+        println!("cargo::rustc-cfg=libva_1_15_or_higher");
     }
     if va_check_version(1, 14) {
         println!("cargo::rustc-cfg=libva_1_14_or_higher");

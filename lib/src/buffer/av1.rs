@@ -618,8 +618,11 @@ impl AV1EncSeqFields {
                 enable_superres,
                 enable_cdef,
                 enable_restoration,
+                #[cfg(libva_1_15_or_higher)]
                 bit_depth_minus8,
+                #[cfg(libva_1_15_or_higher)]
                 subsampling_x,
+                #[cfg(libva_1_15_or_higher)]
                 subsampling_y,
                 #[cfg(libva_1_19_or_higher)]
                 mono_chrome,
@@ -1083,6 +1086,7 @@ impl EncPictureParameterBufferAV1 {
             hierarchical_level_plus1,
             primary_ref_frame,
             order_hint,
+            #[cfg(libva_1_15_or_higher)]
             refresh_frame_flags,
             ref_frame_ctrl_l0,
             ref_frame_ctrl_l1,
