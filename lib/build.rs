@@ -141,9 +141,11 @@ fn main() {
         println!("cargo:rustc-link-arg=-Wl,-rpath={}", va_lib_path);
     }
 
-    // Tell cargo to link va and va-drm objects dynamically.
-    println!("cargo:rustc-link-lib=dylib=va");
-    println!("cargo:rustc-link-lib=dylib=va-drm"); // for the vaGetDisplayDRM entrypoint
+    if !cfg!(feature = "dlopen") {
+        // Tell cargo to link va and va-drm objects dynamically.
+        println!("cargo:rustc-link-lib=dylib=va");
+        println!("cargo:rustc-link-lib=dylib=va-drm"); // for the vaGetDisplayDRM entrypoint
+    }
 
     let mut bindings_builder = vaapi_gen_builder(bindgen::builder()).header(WRAPPER_PATH);
     if !va_h_path.is_empty() {
