@@ -36,6 +36,9 @@ pub struct EncMiscParameterFrameRate(
 
 impl EncMiscParameterFrameRate {
     pub fn new(framerate: u32, temporal_id: u32) -> Self {
+        // libva expects `(denominator << 16) | numerator`, and we set framerate denominator to 1.
+        let framerate = (1 << 16) | (framerate & 0xFFFF);
+
         let _bitfield_1 =
             bindings::_VAEncMiscParameterFrameRate__bindgen_ty_1__bindgen_ty_1::new_bitfield_1(
                 temporal_id,
