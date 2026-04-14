@@ -15,12 +15,12 @@ vendored = []
 intel-protected-content-headers = []
 
 [dependencies]
-thiserror = "1"
+thiserror = "2"
 bitflags = "2.5"
-log = { version = "0", features = ["release_max_level_debug"] }
+log = "0.4"
 
 [build-dependencies]
-bindgen = "0.70.1"
+bindgen = "0.72"
 pkg-config = "0.3.31"
 regex = "1.11.1"
 
