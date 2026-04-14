@@ -126,9 +126,11 @@ mod tests {
         let profile = bindings::VAProfile::VAProfileMPEG2Main;
         let entrypoints = display.query_config_entrypoints(profile).unwrap();
         assert!(!entrypoints.is_empty());
-        assert!(entrypoints
-            .iter()
-            .any(|e| *e == bindings::VAEntrypoint::VAEntrypointVLD));
+        assert!(
+            entrypoints
+                .iter()
+                .any(|e| *e == bindings::VAEntrypoint::VAEntrypointVLD)
+        );
 
         let format = bindings::VA_RT_FORMAT_YUV420;
         let width = 16u32;

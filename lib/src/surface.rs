@@ -8,12 +8,12 @@ use std::os::fd::OwnedFd;
 use std::os::raw::c_void;
 use std::rc::Rc;
 
-use crate::bindings;
-use crate::display::Display;
-use crate::va_check;
 use crate::UsageHint;
 use crate::VASurfaceID;
 use crate::VaError;
+use crate::bindings;
+use crate::display::Display;
+use crate::va_check;
 
 /// Trait describing a memory backing for surfaces.
 ///

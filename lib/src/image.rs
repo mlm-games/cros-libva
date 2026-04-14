@@ -4,12 +4,12 @@
 
 use std::rc::Rc;
 
-use crate::bindings;
-use crate::va_check;
 use crate::Display;
 use crate::Surface;
 use crate::SurfaceMemoryDescriptor;
 use crate::VaError;
+use crate::bindings;
+use crate::va_check;
 
 /// Wrapper around `VAImage` that is tied to the lifetime of a given `Picture`.
 ///

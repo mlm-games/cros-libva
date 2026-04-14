@@ -6,16 +6,16 @@ use std::rc::Rc;
 
 use log::error;
 
-use crate::bindings;
-use crate::buffer::Buffer;
-use crate::buffer::BufferType;
-use crate::display::Display;
-use crate::va_check;
 use crate::Config;
 use crate::EncCodedBuffer;
 use crate::Surface;
 use crate::SurfaceMemoryDescriptor;
 use crate::VaError;
+use crate::bindings;
+use crate::buffer::Buffer;
+use crate::buffer::BufferType;
+use crate::display::Display;
+use crate::va_check;
 
 /// A VA context for a particular [`Display`].
 pub struct Context {

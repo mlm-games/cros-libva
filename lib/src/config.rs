@@ -7,12 +7,12 @@ use std::rc::Rc;
 use log::error;
 use thiserror::Error;
 
+use crate::GenericValueError;
+use crate::VaError;
 use crate::bindings;
 use crate::display::Display;
 use crate::generic_value::GenericValue;
 use crate::va_check;
-use crate::GenericValueError;
-use crate::VaError;
 
 /// A configuration for a given [`Display`].
 pub struct Config {

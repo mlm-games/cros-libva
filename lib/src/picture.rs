@@ -6,14 +6,14 @@ use std::borrow::Borrow;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
+use crate::Image;
+use crate::SurfaceMemoryDescriptor;
+use crate::VaError;
 use crate::bindings;
 use crate::buffer::Buffer;
 use crate::context::Context;
 use crate::surface::Surface;
 use crate::va_check;
-use crate::Image;
-use crate::SurfaceMemoryDescriptor;
-use crate::VaError;
 
 // Use the sealed trait pattern to make sure that new states are not created in caller code. More
 // information about the sealed trait pattern can be found at
