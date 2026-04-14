@@ -399,6 +399,7 @@ impl EncPictureParameterBufferVP9 {
         skip_frame_flag: u8,
         number_skip_frames: u8,
         skip_frames_size: u32,
+        seg_id_block_size: u8,
     ) -> Self {
         let ref_flags = ref_flags.0;
         let pic_flags = pic_flags.0;
@@ -434,6 +435,8 @@ impl EncPictureParameterBufferVP9 {
             skip_frame_flag,
             number_skip_frames,
             skip_frames_size,
+            seg_id_block_size,
+            va_reserved8: [0; 3],
             va_reserved: Default::default(),
         }))
     }
