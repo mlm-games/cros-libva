@@ -403,6 +403,8 @@ impl EncPictureParameterBufferVP9 {
     ) -> Self {
         let ref_flags = ref_flags.0;
         let pic_flags = pic_flags.0;
+        #[cfg(not(libva_1_23_or_higher))]
+        let _ = seg_id_block_size;
 
         Self(Box::new(bindings::VAEncPictureParameterBufferVP9 {
             frame_width_src,
@@ -435,9 +437,11 @@ impl EncPictureParameterBufferVP9 {
             skip_frame_flag,
             number_skip_frames,
             skip_frames_size,
+            #[cfg(libva_1_23_or_higher)]
             seg_id_block_size,
+            #[cfg(libva_1_23_or_higher)]
             va_reserved8: [0; 3],
-            va_reserved: Default::default(),
+            ..Default::default()
         }))
     }
 

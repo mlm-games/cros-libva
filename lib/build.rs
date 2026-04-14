@@ -165,6 +165,7 @@ fn main() {
     };
 
     // Declare the custom cfg flags to avoid warnings
+    println!("cargo::rustc-check-cfg=cfg(libva_1_23_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_21_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_20_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_19_or_higher)");
@@ -174,6 +175,9 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(libva_1_10_or_higher)");
 
     // Set the cfg flags based on version
+    if va_check_version(1, 23) {
+        println!("cargo::rustc-cfg=libva_1_23_or_higher");
+    }
     if va_check_version(1, 21) {
         println!("cargo::rustc-cfg=libva_1_21_or_higher");
     }

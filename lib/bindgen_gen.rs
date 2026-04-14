@@ -3,7 +3,8 @@
 // found in the LICENSE file.
 
 /// The allow list of VA structures and enum values.
-const ALLOW_LIST_TYPE: &str = ".*ExternalBuffers.*|.*PRIME.*|.*MPEG2.*|.*VP8.*|.*VP9.*|.*H264.*|.*HEVC.*|\
+const ALLOW_LIST_TYPE: &str =
+    ".*ExternalBuffers.*|.*PRIME.*|.*MPEG2.*|.*VP8.*|.*VP9.*|.*H264.*|.*HEVC.*|\
     .*JPEG.*|VACodedBufferSegment|.*AV1.*|VAEncMisc.*|VASurfaceDecodeMBErrors|\
     VADecodeErrorType|.*VAProc.*|VAEncPacked.*|\
     VACenc.*|VA_TEE_.*|VAEncryption.*|VA_PROTECTED_.*";
