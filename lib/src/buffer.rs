@@ -32,10 +32,10 @@ use std::rc::Rc;
 
 use log::error;
 
-use crate::bindings;
-use crate::va_check;
 use crate::Context;
 use crate::VaError;
+use crate::bindings;
+use crate::va_check;
 
 /// Wrapper type representing a buffer created with `vaCreateBuffer`.
 pub struct Buffer {

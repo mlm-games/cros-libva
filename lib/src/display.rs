@@ -13,14 +13,14 @@ use std::sync::Arc;
 
 use thiserror::Error;
 
+use crate::SurfaceMemoryDescriptor;
+use crate::UsageHint;
+use crate::VaError;
 use crate::bindings;
 use crate::config::Config;
 use crate::context::Context;
 use crate::surface::Surface;
 use crate::va_check;
-use crate::SurfaceMemoryDescriptor;
-use crate::UsageHint;
-use crate::VaError;
 
 /// Iterates over existing DRM devices.
 ///
