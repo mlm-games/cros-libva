@@ -32,6 +32,10 @@ use std::rc::Rc;
 
 use log::error;
 
+/// Maximum number of segments to traverse in the coded buffer linked list
+/// as a safety guard against driver bugs creating cycles.
+const MAX_CODED_BUFFER_SEGMENTS: usize = 4096;
+
 use crate::Context;
 use crate::VaError;
 use crate::bindings;
@@ -41,6 +45,9 @@ use crate::va_check;
 pub struct Buffer {
     context: Rc<Context>,
     id: bindings::VABufferID,
+    /// Heap allocations that the VA driver may hold pointers into
+    /// (ex: `VADecPictureParameterBufferAV1.anchor_frames_list`).
+    _extras: Vec<Box<dyn std::any::Any>>,
 }
 
 impl Buffer {
@@ -48,6 +55,17 @@ impl Buffer {
     /// [`Context::create_buffer`].
     pub(crate) fn new(context: Rc<Context>, mut type_: BufferType) -> Result<Self, VaError> {
         let mut buffer_id = 0;
+        // Extras: heap allocations the driver may hold pointers into.
+        let mut extras: Vec<Box<dyn std::any::Any>> = Vec::new();
+
+        // Transfer ownership of backing allocations from buffer types that
+        // contain external pointers (e.g. AV1 anchor_frames_list) so they
+        // live as long as the Buffer.
+        if let BufferType::PictureParameter(PictureParameter::AV1(ref mut wrapper)) = type_
+            && let Some(backing) = wrapper.take_anchor_frames_backing()
+        {
+            extras.push(backing);
+        }
 
         /* we send all slices parameters as a single array in H264, AV1 */
         let nb_elements = match type_ {
@@ -330,6 +348,7 @@ impl Buffer {
         Ok(Self {
             context,
             id: buffer_id,
+            _extras: extras,
         })
     }
 
@@ -415,6 +434,7 @@ impl Buffer {
         Ok(Self {
             context,
             id: buffer_id,
+            _extras: Vec::new(),
         })
     }
 }
@@ -678,7 +698,8 @@ impl<'p> MappedCodedBuffer<'p> {
             bindings::vaMapBuffer(buffer.0.context.display().handle(), buffer.id(), &mut addr)
         })?;
 
-        while !addr.is_null() {
+        // Guard against driver bugs that create cycles in the segment list.
+        while !addr.is_null() && segments.len() < MAX_CODED_BUFFER_SEGMENTS {
             let segment: &bindings::VACodedBufferSegment =
                 unsafe { &*(addr as *const bindings::VACodedBufferSegment) };
 

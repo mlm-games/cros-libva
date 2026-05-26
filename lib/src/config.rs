@@ -70,17 +70,17 @@ impl Config {
     // This function queries for all supported attributes for this configuration. In particular, if
     // the underlying hardware supports the creation of VA surfaces in various formats, then this
     // function will enumerate all pixel formats that are supported.
-    fn query_surface_attributes(&mut self) -> Result<Vec<bindings::VASurfaceAttrib>, VaError> {
+    fn query_surface_attributes(&self) -> Result<Vec<bindings::VASurfaceAttrib>, VaError> {
         // Safe because `self` represents a valid VAConfig. We first query how
         // much space is needed by the C API by passing in NULL in the first
         // call to `vaQuerySurfaceAttributes`.
-        let attrs_len: std::os::raw::c_uint = 0;
+        let mut attrs_len: std::os::raw::c_uint = 0;
         va_check(unsafe {
             bindings::vaQuerySurfaceAttributes(
                 self.display.handle(),
                 self.id,
                 std::ptr::null_mut(),
-                &attrs_len as *const _ as *mut std::os::raw::c_uint,
+                &mut attrs_len,
             )
         })?;
 
@@ -93,7 +93,7 @@ impl Config {
                 self.display.handle(),
                 self.id,
                 attrs.as_mut_ptr(),
-                &attrs_len as *const _ as *mut std::os::raw::c_uint,
+                &mut attrs_len,
             )
         })?;
 
@@ -109,7 +109,7 @@ impl Config {
     /// Query the surface attributes of type `attr_type`. The attribute may or may not be defined by
     /// the driver.
     pub fn query_surface_attributes_by_type(
-        &mut self,
+        &self,
         attr_type: bindings::VASurfaceAttribType::Type,
     ) -> Result<Vec<GenericValue>, QuerySurfaceAttributesError> {
         let surface_attributes = self.query_surface_attributes()?;

@@ -123,15 +123,16 @@ impl Display {
 
     /// Opens the first device that succeeds and returns its `Display`.
     ///
-    /// If an error occurs on a given device, it is ignored and the next one is tried until one
-    /// succeeds or we reach the end of the iterator.
+    /// If an error occurs on a given device, a warning is logged and the next one is tried until
+    /// one succeeds or we reach the end of the iterator.
     pub fn open() -> Option<Arc<Self>> {
         let devices = DrmDeviceIterator::default();
 
         // Try all the DRM devices until one succeeds.
         for device in devices {
-            if let Ok(display) = Self::open_drm_display(device) {
-                return Some(display);
+            match Self::open_drm_display(&device) {
+                Ok(display) => return Some(display),
+                Err(e) => log::warn!("Failed to open DRM device {}: {e}", device.display()),
             }
         }
 
@@ -253,8 +254,8 @@ impl Display {
     /// * `width` - Width for the create surfaces
     /// * `height` - Height for the created surfaces
     /// * `usage_hint` - Optional hint of intended usage to optimize allocation (e.g. tiling)
-    /// * `num_surfaces` - Number of surfaces to create
-    /// * `descriptors` - Memory descriptors used as surface memory backing.
+    /// * `descriptors` - Memory descriptors used as surface memory backing. The number of surfaces
+    ///   created equals the length of this vector.
     ///
     /// # Return value
     ///

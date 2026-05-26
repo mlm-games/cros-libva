@@ -7,6 +7,7 @@
 use crate::bindings;
 
 /// Wrapper over the `VAPictureH264` FFI type.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct PictureH264(bindings::VAPictureH264);
 
 impl PictureH264 {

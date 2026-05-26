@@ -6,7 +6,7 @@
 
 use crate::bindings;
 
-/// Wrapper over the `VAPictureH264` FFI type.
+/// Wrapper over the `VAPictureHEVC` FFI type.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct PictureHEVC(bindings::VAPictureHEVC);
 

@@ -167,7 +167,7 @@ pub struct EncMiscParameterMaxSliceSize(
 impl EncMiscParameterMaxSliceSize {
     pub fn new(max_slice_size: u32) -> Self {
         Self(MiscEncParamBuffer::new_boxed(
-            bindings::VAEncMiscParameterType::VAEncMiscParameterTypeMaxFrameSize,
+            bindings::VAEncMiscParameterType::VAEncMiscParameterTypeMaxSliceSize,
             bindings::VAEncMiscParameterMaxSliceSize {
                 max_slice_size,
                 ..Default::default()

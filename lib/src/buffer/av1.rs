@@ -382,8 +382,18 @@ impl AV1QMatrixFields {
     }
 }
 
-/// A wrapper over `VADecPictureParameterBufferAV1` FFI type
-pub struct PictureParameterBufferAV1(Box<bindings::VADecPictureParameterBufferAV1>);
+/// A wrapper over `VADecPictureParameterBufferAV1` FFI type.
+///
+/// # Lifetime of external pointers
+///
+/// The underlying C struct contains a pointer field `anchor_frames_list` that
+/// points to heap-allocated memory. This memory is kept alive by the
+/// `anchor_frames_backing` field, which is transferred to [`Buffer`] on creation
+/// so it lives until `vaDestroyBuffer` is called.
+pub struct PictureParameterBufferAV1 {
+    inner: Box<bindings::VADecPictureParameterBufferAV1>,
+    anchor_frames_backing: Option<Vec<bindings::VASurfaceID>>,
+}
 
 impl PictureParameterBufferAV1 {
     /// Creates the wrapper
@@ -396,7 +406,7 @@ impl PictureParameterBufferAV1 {
         seq_info_fields: &AV1SeqFields,
         current_frame: bindings::VASurfaceID,
         current_display_picture: bindings::VASurfaceID,
-        mut anchor_frames_list: Vec<bindings::VASurfaceID>,
+        anchor_frames_list: Vec<bindings::VASurfaceID>,
         frame_width_minus1: u16,
         frame_height_minus1: u16,
         output_frame_width_in_tiles_minus_1: u16,
@@ -445,7 +455,15 @@ impl PictureParameterBufferAV1 {
         let mode_control_fields = mode_control_fields.0;
 
         let anchor_frames_num = anchor_frames_list.len() as u8;
-        let anchor_frames_list = anchor_frames_list.as_mut_ptr();
+        // Keep the backing allocation alive so the driver can deref the
+        // pointer during vaRenderPicture. Ownership is transferred to Buffer
+        // in Buffer::new via take_anchor_frames_backing().
+        let anchor_frames_backing = if anchor_frames_num > 0 {
+            let ptr = anchor_frames_list.as_ptr() as *mut bindings::VASurfaceID;
+            (ptr, Some(anchor_frames_list))
+        } else {
+            (std::ptr::null_mut(), None)
+        };
 
         let film_grain_info = film_grain_info.0;
         let loop_restoration_fields = loop_restoration_fields.0;
@@ -458,61 +476,70 @@ impl PictureParameterBufferAV1 {
             .try_into()
             .unwrap();
 
-        Self(Box::new(bindings::VADecPictureParameterBufferAV1 {
-            profile,
-            order_hint_bits_minus_1,
-            bit_depth_idx,
-            matrix_coefficients,
-            seq_info_fields,
-            current_frame,
-            current_display_picture,
-            anchor_frames_num,
-            anchor_frames_list,
-            frame_width_minus1,
-            frame_height_minus1,
-            output_frame_width_in_tiles_minus_1,
-            output_frame_height_in_tiles_minus_1,
-            ref_frame_map,
-            ref_frame_idx,
-            primary_ref_frame,
-            order_hint,
-            seg_info,
-            film_grain_info,
-            tile_cols,
-            tile_rows,
-            width_in_sbs_minus_1,
-            height_in_sbs_minus_1,
-            tile_count_minus_1,
-            context_update_tile_id,
-            pic_info_fields,
-            superres_scale_denominator,
-            interp_filter,
-            filter_level,
-            filter_level_u,
-            filter_level_v,
-            loop_filter_info_fields,
-            ref_deltas,
-            mode_deltas,
-            base_qindex,
-            y_dc_delta_q,
-            u_dc_delta_q,
-            u_ac_delta_q,
-            v_dc_delta_q,
-            v_ac_delta_q,
-            qmatrix_fields,
-            mode_control_fields,
-            cdef_damping_minus_3,
-            cdef_bits,
-            cdef_y_strengths,
-            cdef_uv_strengths,
-            loop_restoration_fields,
-            wm,
-            va_reserved: Default::default(),
-        }))
+        Self {
+            inner: Box::new(bindings::VADecPictureParameterBufferAV1 {
+                profile,
+                order_hint_bits_minus_1,
+                bit_depth_idx,
+                matrix_coefficients,
+                seq_info_fields,
+                current_frame,
+                current_display_picture,
+                anchor_frames_num,
+                anchor_frames_list: anchor_frames_backing.0,
+                frame_width_minus1,
+                frame_height_minus1,
+                output_frame_width_in_tiles_minus_1,
+                output_frame_height_in_tiles_minus_1,
+                ref_frame_map,
+                ref_frame_idx,
+                primary_ref_frame,
+                order_hint,
+                seg_info,
+                film_grain_info,
+                tile_cols,
+                tile_rows,
+                width_in_sbs_minus_1,
+                height_in_sbs_minus_1,
+                tile_count_minus_1,
+                context_update_tile_id,
+                pic_info_fields,
+                superres_scale_denominator,
+                interp_filter,
+                filter_level,
+                filter_level_u,
+                filter_level_v,
+                loop_filter_info_fields,
+                ref_deltas,
+                mode_deltas,
+                base_qindex,
+                y_dc_delta_q,
+                u_dc_delta_q,
+                u_ac_delta_q,
+                v_dc_delta_q,
+                v_ac_delta_q,
+                qmatrix_fields,
+                mode_control_fields,
+                cdef_damping_minus_3,
+                cdef_bits,
+                cdef_y_strengths,
+                cdef_uv_strengths,
+                loop_restoration_fields,
+                wm,
+                va_reserved: Default::default(),
+            }),
+            anchor_frames_backing: anchor_frames_backing.1,
+        }
     }
 
     pub(crate) fn inner_mut(&mut self) -> &mut bindings::VADecPictureParameterBufferAV1 {
-        self.0.as_mut()
+        self.inner.as_mut()
+    }
+
+    /// Takes the anchor frames backing allocation so it can be kept alive
+    /// in the [`Buffer`] for the driver's lifetime.
+    pub(crate) fn take_anchor_frames_backing(&mut self) -> Option<Box<dyn std::any::Any>> {
+        self.anchor_frames_backing.take().map(|b| Box::new(b) as Box<dyn std::any::Any>)
     }
 }
 
@@ -526,6 +553,12 @@ impl SliceParameterBufferAV1 {
     /// Creates the wrapper
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// Creates an empty array (alias for `new()`, for consistency with
+    /// `SliceParameterBufferH264`).
+    pub fn new_array() -> Self {
+        Self::new()
     }
 
     /// Adds a slice parameter to the wrapper
