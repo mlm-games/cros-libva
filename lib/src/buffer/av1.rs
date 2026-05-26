@@ -539,7 +539,9 @@ impl PictureParameterBufferAV1 {
     /// Takes the anchor frames backing allocation so it can be kept alive
     /// in the [`Buffer`] for the driver's lifetime.
     pub(crate) fn take_anchor_frames_backing(&mut self) -> Option<Box<dyn std::any::Any>> {
-        self.anchor_frames_backing.take().map(|b| Box::new(b) as Box<dyn std::any::Any>)
+        self.anchor_frames_backing
+            .take()
+            .map(|b| Box::new(b) as Box<dyn std::any::Any>)
     }
 }
 
