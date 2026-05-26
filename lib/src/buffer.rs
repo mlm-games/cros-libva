@@ -341,6 +341,9 @@ impl Buffer {
 }
 
 /// A borrowed version of `BufferType` that avoids copying data.
+///
+/// These buffer types are read-only from the driver's perspective — the pointer
+/// is passed as `void*` to satisfy the C API but the data is never mutated.
 pub enum BorrowedBufferType<'a> {
     /// Abstraction over `VASliceDataBufferType` that uses borrowed data.
     SliceData(&'a [u8]),
@@ -367,7 +370,14 @@ impl<'a> BorrowedBufferType<'a> {
 
 impl Buffer {
     /// Creates a new buffer from a `BorrowedBufferType`.
-    pub(crate) fn new_borrowed(
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the borrowed data lives until the returned `Buffer`
+    /// is destroyed. The VA-API driver is assumed to only read (not write) the data
+    /// for `VASliceDataBufferType`, `VAEncPackedHeaderDataBufferType`, and
+    /// `VAProtectedSliceDataBufferType`.
+    pub(crate) unsafe fn new_borrowed(
         context: Rc<Context>,
         type_: BorrowedBufferType,
     ) -> Result<Self, VaError> {
@@ -377,18 +387,19 @@ impl Buffer {
 
         let (ptr, size) = match type_ {
             BorrowedBufferType::SliceData(data) => {
-                (data.as_ptr() as *mut std::ffi::c_void, data.len())
+                let ptr = data.as_ptr() as *mut std::ffi::c_void;
+                (ptr, data.len())
             }
             BorrowedBufferType::EncPackedHeaderData(data) => {
-                (data.as_ptr() as *mut std::ffi::c_void, data.len())
+                let ptr = data.as_ptr() as *mut std::ffi::c_void;
+                (ptr, data.len())
             }
             BorrowedBufferType::ProtectedSliceDataBuffer(data) => {
-                (data.as_ptr() as *mut std::ffi::c_void, data.len())
+                let ptr = data.as_ptr() as *mut std::ffi::c_void;
+                (ptr, data.len())
             }
         };
 
-        // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
-        // be correct.
         va_check(unsafe {
             bindings::vaCreateBuffer(
                 context.display().handle(),

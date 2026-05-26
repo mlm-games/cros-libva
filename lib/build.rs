@@ -250,16 +250,6 @@ fn main() {
         bindings_builder = bindings_builder.clang_arg(format!("-I{}", out_dir.display()));
     }
 
-    if std::env::var("CARGO_FEATURE_INTEL_PROTECTED_CONTENT_HEADERS").is_ok() {
-        println!("cargo:warning=Building with intel protected content headers!");
-        bindings_builder = bindings_builder.clang_arg("-DINTEL_PROTECTED_CONTENT_HEADERS");
-        let va_p_h_path_env = env::var(CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV);
-        if va_p_h_path_env.is_ok() {
-            let va_p_h_path = va_p_h_path_env.unwrap();
-            bindings_builder = bindings_builder.clang_arg(format!("-I{}", va_p_h_path));
-        }
-    }
-
     let bindings = bindings_builder
         .generate()
         .expect("unable to generate bindings");

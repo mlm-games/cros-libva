@@ -85,11 +85,16 @@ impl Context {
     }
 
     /// Create a new buffer from a `BorrowedBufferType`.
-    pub fn create_buffer_borrowed(
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure the borrowed data lives until the returned `Buffer` is destroyed.
+    pub unsafe fn create_buffer_borrowed(
         self: &Rc<Self>,
         type_: crate::buffer::BorrowedBufferType<'_>,
     ) -> Result<Buffer, VaError> {
-        Buffer::new_borrowed(Rc::clone(self), type_)
+        // SAFETY: The caller ensures the borrowed data outlives the returned Buffer.
+        unsafe { Buffer::new_borrowed(Rc::clone(self), type_) }
     }
 
     /// Create a new buffer of type `type_`.

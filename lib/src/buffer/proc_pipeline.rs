@@ -5,7 +5,7 @@
 //! Wrappers around `VAProcPipeline` types.
 
 use crate::bindings;
-use std::{marker::PhantomData, ptr};
+use std::ptr;
 
 /// Wrapper over the `VABlendState` ffi type.
 pub struct BlendState(bindings::VABlendState);
@@ -52,17 +52,37 @@ impl Default for ProcColorProperties {
 }
 
 /// Wrapper over the `VAHdrMetaData` ffi type.
-pub struct HdrMetaData(bindings::VAHdrMetaData);
+///
+/// Owns all data referenced by the inner FFI struct to prevent dangling pointers.
+pub struct HdrMetaData {
+    inner: Box<bindings::VAHdrMetaData>,
+    // Keeps the byte buffer alive so the pointer in `inner.metadata` stays valid.
+    _owned_data: Option<Vec<u8>>,
+}
 
-impl<'a> HdrMetaData {
+impl HdrMetaData {
     /// Creates the bindgen field
-    pub fn new(metadata_type: u32, metadata: Option<&'a [u8]>, metadata_size: u32) -> Self {
-        Self(bindings::VAHdrMetaData {
-            metadata_type: metadata_type as _,
-            metadata: metadata.map_or(ptr::null_mut(), |f| f.as_ptr() as *mut _),
-            metadata_size,
-            reserved: Default::default(),
-        })
+    pub fn new(metadata_type: u32, metadata: Option<Vec<u8>>, metadata_size: u32) -> Self {
+        let (ptr, owned) = match metadata {
+            Some(data) => {
+                let ptr = data.as_ptr() as *mut std::ffi::c_void;
+                (ptr, Some(data))
+            }
+            None => (ptr::null_mut(), None),
+        };
+        Self {
+            inner: Box::new(bindings::VAHdrMetaData {
+                metadata_type: metadata_type as _,
+                metadata: ptr,
+                metadata_size,
+                reserved: Default::default(),
+            }),
+            _owned_data: owned,
+        }
+    }
+
+    pub(crate) fn inner_ptr(&self) -> *const bindings::VAHdrMetaData {
+        &*self.inner as *const bindings::VAHdrMetaData
     }
 }
 
@@ -179,7 +199,9 @@ impl ProcPipelineParameterBuffer {
                 .output_hdr_metadata
                 .as_deref()
                 .map_or(ptr::null_mut(), |o| {
-                    o.as_ptr() as *mut bindings::VAHdrMetaData
+                    o.first().map_or(ptr::null_mut(), |h| {
+                        h.inner_ptr() as *mut bindings::VAHdrMetaData
+                    })
                 }),
             va_reserved: Default::default(),
         });
