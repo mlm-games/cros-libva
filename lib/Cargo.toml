@@ -1,6 +1,6 @@
 [package]
 name = "cros-libva"
-version = "0.0.13"
+version = "0.0.20"
 license = "BSD-3-Clause"
 description = "Safe bindings over libva"
 repository = "https://github.com/chromeos/cros-libva"
@@ -16,7 +16,7 @@ intel-protected-content-headers = []
 
 [dependencies]
 thiserror = "2"
-bitflags = "2.5"
+bitflags = "2.11"
 log = "0.4"
 
 [build-dependencies]
