@@ -22,11 +22,13 @@ jobs:
       with:
         packages: libdrm-dev
         version: 1.0
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
     - name: "checkout libva"
       run: |
-        curl -O -L https://github.com/intel/libva/archive/refs/tags/2.22.0.tar.gz && \
-        tar xf 2.22.0.tar.gz --one-top-level=work --strip-components 1
+        curl -O -L https://github.com/intel/libva/archive/refs/tags/2.24.1.tar.gz && \
+        tar xf 2.24.1.tar.gz --one-top-level=work --strip-components 1
     - name: "build libva"
       run: |
         cd work; \
