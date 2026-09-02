@@ -68,8 +68,8 @@ fn get_va_version(va_h_path: &str) -> (u32, u32) {
 
 /// When using vendored headers, generate `va_version.h` from the submodule's
 /// `va_version.h.in` template by extracting version numbers from `meson.build`.
-fn generate_vendored_version_header(out_dir: &Path) -> (u32, u32) {
-    let meson_build = read_to_string("libva/meson.build")
+fn generate_vendored_version_header(out_dir: &Path, manifest_dir: &Path) -> (u32, u32) {
+    let meson_build = read_to_string(manifest_dir.join("libva/meson.build"))
         .expect("failed to read libva/meson.build — is the submodule initialized?");
 
     // Extract va_api_{major,minor,micro}_version from meson.build
@@ -85,7 +85,7 @@ fn generate_vendored_version_header(out_dir: &Path) -> (u32, u32) {
     let micro = extract("va_api_micro_version");
     let version = format!("{}.{}.{}", major, minor, micro);
 
-    let template = read_to_string("libva/va/va_version.h.in")
+    let template = read_to_string(manifest_dir.join("libva/va/va_version.h.in"))
         .expect("failed to read libva/va/va_version.h.in");
 
     let generated = template
@@ -116,7 +116,7 @@ fn main() {
     let mut use_vendored_headers = cfg!(feature = "vendored");
 
     let (va_h_path, major, minor) = if cfg!(feature = "vendored") {
-        let (major, minor) = generate_vendored_version_header(&out_dir);
+        let (major, minor) = generate_vendored_version_header(&out_dir, &manifest_dir);
 
         // Tell cargo to re-run if submodule files change
         println!("cargo:rerun-if-changed=libva/meson.build");
@@ -162,7 +162,7 @@ fn main() {
                                 e
                             );
                             use_vendored_headers = true;
-                            let (major, minor) = generate_vendored_version_header(&out_dir);
+                            let (major, minor) = generate_vendored_version_header(&out_dir, &manifest_dir);
                             println!("cargo:rerun-if-changed=libva/meson.build");
                             println!("cargo:rerun-if-changed=libva/va/va_version.h.in");
                             let va_h_path = manifest_dir
