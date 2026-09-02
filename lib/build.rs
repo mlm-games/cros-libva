@@ -111,6 +111,9 @@ fn main() {
     }
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("`OUT_DIR` is not set"));
+    let manifest_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("`CARGO_MANIFEST_DIR` is not set"));
+    let mut use_vendored_headers = cfg!(feature = "vendored");
 
     let (va_h_path, major, minor) = if cfg!(feature = "vendored") {
         let (major, minor) = generate_vendored_version_header(&out_dir);
@@ -124,8 +127,6 @@ fn main() {
         // 2. OUT_DIR so `#include <va/va_version.h>` resolves to the generated header
         //
         // Return the submodule path; OUT_DIR is added as an extra clang arg below.
-        let manifest_dir =
-            PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("`CARGO_MANIFEST_DIR` is not set"));
         let va_h_path = manifest_dir
             .join("libva")
             .into_os_string()
@@ -133,27 +134,51 @@ fn main() {
             .unwrap();
         (va_h_path, major, minor)
     } else {
-        let va_h_path = env::var(CROS_LIBVA_H_PATH_ENV)
-            .or_else(|e| {
-                if let VarError::NotPresent = e {
-                    // Only need include paths here; linking is handled separately below.
-                    let mut config = pkg_config::Config::new();
-                    config.cargo_metadata(false);
-                    match config.probe("libva") {
-                        Ok(lib) => Ok(lib.include_paths[0]
+        // Prefer explicit env override
+        let explicit = env::var(CROS_LIBVA_H_PATH_ENV);
+        match explicit {
+            Ok(p) => {
+                let (major, minor) = get_va_version(&p);
+                (p, major, minor)
+            }
+            Err(VarError::NotPresent) => {
+                let mut config = pkg_config::Config::new();
+                config.cargo_metadata(false);
+                match config.probe("libva") {
+                    Ok(lib) => {
+                        let va_h_path = lib.include_paths[0]
                             .clone()
                             .into_os_string()
                             .into_string()
-                            .unwrap()),
-                        Err(e) => panic!("libva is not found in system: {}", e),
+                            .unwrap();
+                        let (major, minor) = get_va_version(&va_h_path);
+                        (va_h_path, major, minor)
                     }
-                } else {
-                    Err(e)
+                    Err(e) => {
+                        // Fallback to vendored headers bundled in the crate (lib/libva).
+                        if manifest_dir.join("libva/va/va.h").exists() {
+                            println!(
+                                "cargo:warning=libva not found via pkg-config ({}), falling back to vendored headers in lib/libva",
+                                e
+                            );
+                            use_vendored_headers = true;
+                            let (major, minor) = generate_vendored_version_header(&out_dir);
+                            println!("cargo:rerun-if-changed=libva/meson.build");
+                            println!("cargo:rerun-if-changed=libva/va/va_version.h.in");
+                            let va_h_path = manifest_dir
+                                .join("libva")
+                                .into_os_string()
+                                .into_string()
+                                .unwrap();
+                            (va_h_path, major, minor)
+                        } else {
+                            panic!("libva is not found in system: {}", e)
+                        }
+                    }
                 }
-            })
-            .expect("libva header location is unknown");
-        let (major, minor) = get_va_version(&va_h_path);
-        (va_h_path, major, minor)
+            }
+            Err(e) => panic!("{}: {}", CROS_LIBVA_H_PATH_ENV, e),
+        }
     };
 
     // Check the path exists.
@@ -173,7 +198,10 @@ fn main() {
     // Ensure rerun if env changes
     println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_H_PATH_ENV);
     println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_LIB_PATH_ENV);
-    println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV);
+    println!(
+        "cargo:rerun-if-env-changed={}",
+        CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV
+    );
 
     // Declare the custom cfg flags to avoid warnings
     println!("cargo::rustc-check-cfg=cfg(libva_1_23_or_higher)");
@@ -234,15 +262,29 @@ fn main() {
             // Let pkg-config emit the link-search and link-lib directives.
             let mut libva = pkg_config::Config::new();
             libva.cargo_metadata(true);
-            libva
-                .probe("libva")
-                .expect("libva not found via pkg-config");
-
-            let mut libva_drm = pkg_config::Config::new();
-            libva_drm.cargo_metadata(true);
-            libva_drm
-                .probe("libva-drm")
-                .expect("libva-drm not found via pkg-config");
+            if let Err(e) = libva.probe("libva") {
+                if use_vendored_headers {
+                    println!(
+                        "cargo:warning=libva not found for linking ({}), skipping link (dlopen fallback/vendors headers)",
+                        e
+                    );
+                } else {
+                    panic!("libva not found via pkg-config: {}", e);
+                }
+            } else {
+                let mut libva_drm = pkg_config::Config::new();
+                libva_drm.cargo_metadata(true);
+                if let Err(e) = libva_drm.probe("libva-drm") {
+                    if use_vendored_headers {
+                        println!(
+                            "cargo:warning=libva-drm not found for linking ({}), skipping",
+                            e
+                        );
+                    } else {
+                        panic!("libva-drm not found via pkg-config: {}", e);
+                    }
+                }
+            }
         }
     }
 
@@ -250,7 +292,7 @@ fn main() {
     if !va_h_path.is_empty() {
         bindings_builder = bindings_builder.clang_arg(format!("-I{}", va_h_path));
     }
-    if cfg!(feature = "vendored") {
+    if use_vendored_headers {
         bindings_builder = bindings_builder.clang_arg(format!("-I{}", out_dir.display()));
     }
 
