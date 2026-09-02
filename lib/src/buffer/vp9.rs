@@ -399,12 +399,11 @@ impl EncPictureParameterBufferVP9 {
         skip_frame_flag: u8,
         number_skip_frames: u8,
         skip_frames_size: u32,
-        // NOTE: newer libva consumes `seg_id_block_size` from
-        // reserved padding, older headers have no such field. Leave at 0 via Default.
         seg_id_block_size: u8,
     ) -> Self {
         let ref_flags = ref_flags.0;
         let pic_flags = pic_flags.0;
+        #[cfg(not(libva_1_23_or_higher))]
         let _ = seg_id_block_size;
 
         Self(Box::new(bindings::VAEncPictureParameterBufferVP9 {
@@ -438,7 +437,11 @@ impl EncPictureParameterBufferVP9 {
             skip_frame_flag,
             number_skip_frames,
             skip_frames_size,
-            ..Default::default()
+            #[cfg(libva_1_23_or_higher)]
+            seg_id_block_size,
+            #[cfg(libva_1_23_or_higher)]
+            va_reserved8: Default::default(),
+            va_reserved: Default::default(),
         }))
     }
 
