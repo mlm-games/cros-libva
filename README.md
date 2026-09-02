@@ -12,7 +12,9 @@ By default (`dlopen` feature, enabled via `default`), `libva` is runtime-loaded 
 For compile-time linking, disable default features:
 
 ```toml
-cros-libva = { version = "0.1", default-features = false }
+libva = { version = "0.1", default-features = false }
+# or old alias:
+# cros-libva = { package = "libva", version = "0.1", default-features = false }
 ```
 
 This restores the old `pkg-config --libs libva libva-drm` link (`-lva -lva-drm`). You can also explicitly enable `linked` (alias, currently no-op) to document intent.
@@ -62,13 +64,12 @@ external/rust/crates/cros-libva and the libcros_libva library target will be
 
 ## Using
 
-The name of this crate is `cros-libva` to highlight the fact that it originates
-from ChromeOS and it not an official bindings. For ease of use, it is
-recommended to rename it to just `libva` in your project by using the following
-line in your `Cargo.toml`:
+Published as [`libva`](https://crates.io/crates/libva) (fork of `cros-libva` to support generic distros + `dlopen` default). Use directly:
 
-```
-libva = { package = "cros-libva", version = "0.1" }
+```toml
+libva = "0.1"
+# compat alias for old code:
+# cros-libva = { package = "libva", version = "0.1" }
 ```
 
 ## Testing
@@ -83,6 +84,6 @@ cargo test -- --ignored libva_utils_mpeg2vldemo
 
 ## Credits
 
-The first version of this crate was written by Daniel Almeida and hosted in the
+The first/original version of this crate was written by Daniel Almeida and hosted in the
 [crosvm repository](https://chromium.googlesource.com/crosvm/crosvm/) before
 being split.

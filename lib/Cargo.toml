@@ -1,19 +1,22 @@
 [package]
-name = "cros-libva"
+name = "libva"
 version = "0.1.0"
 license = "BSD-3-Clause"
 description = "Safe bindings over libva"
-repository = "https://github.com/chromeos/cros-libva"
-authors = ["The Chromium OS Authors"]
+repository = "https://github.com/mlm-games/cros-libva"
+authors =  ["mlm-games"]  # for publish, ["The Chromium OS Authors"]
 edition = "2024"
 rust-version = "1.88"
+keywords = ["vaapi", "libva", "video", "hardware", "drm"]
+categories = ["api-bindings", "multimedia"]
+homepage = "https://github.com/mlm-games/cros-libva"
 
 readme.workspace = true
 
 [features]
 default = ["dlopen"]
 dlopen = ["dep:libloading"]
-# static linking via pkg-config (woudld anyway require default=false so kinda redundant).
+# static linking via pkg-config (would anyway require default=false so is kinda redundant/informational).
 linked = []
 vendored = []
 intel-protected-content-headers = []

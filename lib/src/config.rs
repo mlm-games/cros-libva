@@ -128,7 +128,8 @@ impl Config {
 impl Drop for Config {
     fn drop(&mut self) {
         // Safe because `self` represents a valid Config.
-        let status = va_check(unsafe { crate::va::vaDestroyConfig(self.display.handle(), self.id) });
+        let status =
+            va_check(unsafe { crate::va::vaDestroyConfig(self.display.handle(), self.id) });
 
         if let Err(e) = status {
             error!("vaDestroyConfig failed: {}", e);

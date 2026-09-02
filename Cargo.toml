@@ -4,3 +4,8 @@ members = ["lib"]
 
 [workspace.package]
 readme = "README.md"
+repository = "https://github.com/mlm-games/cros-libva"
+license = "BSD-3-Clause"
+edition = "2024"
+rust-version = "1.88"
+authors = ["mlm-games", "ragebreaker"] # Original: ["The Chromium OS Authors"]
