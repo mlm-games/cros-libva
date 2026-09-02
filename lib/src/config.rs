@@ -44,7 +44,7 @@ impl Config {
         // The `attrs` vector is also properly initialized and its actual size is passed to
         // `vaCreateConfig`, so it is impossible to write past the end of its storage by mistake.
         va_check(unsafe {
-            bindings::vaCreateConfig(
+            crate::va::vaCreateConfig(
                 display.handle(),
                 profile,
                 entrypoint,
@@ -74,13 +74,13 @@ impl Config {
         // Safe because `self` represents a valid VAConfig. We first query how
         // much space is needed by the C API by passing in NULL in the first
         // call to `vaQuerySurfaceAttributes`.
-        let attrs_len: std::os::raw::c_uint = 0;
+        let mut attrs_len: std::os::raw::c_uint = 0;
         va_check(unsafe {
-            bindings::vaQuerySurfaceAttributes(
+            crate::va::vaQuerySurfaceAttributes(
                 self.display.handle(),
                 self.id,
                 std::ptr::null_mut(),
-                &attrs_len as *const _ as *mut std::os::raw::c_uint,
+                &mut attrs_len,
             )
         })?;
 
@@ -89,11 +89,11 @@ impl Config {
         // returned by the initial call to vaQuerySurfaceAttributes. We then
         // pass a valid pointer to it.
         va_check(unsafe {
-            bindings::vaQuerySurfaceAttributes(
+            crate::va::vaQuerySurfaceAttributes(
                 self.display.handle(),
                 self.id,
                 attrs.as_mut_ptr(),
-                &attrs_len as *const _ as *mut std::os::raw::c_uint,
+                &mut attrs_len,
             )
         })?;
 
@@ -128,10 +128,10 @@ impl Config {
 impl Drop for Config {
     fn drop(&mut self) {
         // Safe because `self` represents a valid Config.
-        let status = va_check(unsafe { bindings::vaDestroyConfig(self.display.handle(), self.id) });
+        let status = va_check(unsafe { crate::va::vaDestroyConfig(self.display.handle(), self.id) });
 
-        if status.is_err() {
-            error!("vaDestroyConfig failed: {}", status.unwrap_err());
+        if let Err(e) = status {
+            error!("vaDestroyConfig failed: {}", e);
         }
     }
 }

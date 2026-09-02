@@ -7,12 +7,17 @@ usable anywhere.
 
 ## Dependencies
 
-The native [libva](https://github.com/intel/libva) library is required at link
-time, so make sure to have the `libva-dev` or equivalent package for your
-distribution installed. The libva version needs to be 1.20.0 or newer. The
-VA-API driver corresponding to your hardware is also required: for Intel
-hardware it will be [intel-media-driver](https://github.com/intel/media-driver),
-whereas AMD hardware relies on [Mesa](https://gitlab.freedesktop.org/mesa/mesa).
+By default (`dlopen` feature, enabled via `default`), `libva` is runtime-loaded via [`libloading`](https://crates.io/crates/libloading) (`libva.so.2` / `libva-drm.so.2`), hence runs on systems without libva installed (e.g. generic distros, CI). `Display::open()` will simply return `None`/`Err` if the libraries cannot be loaded.
+
+For compile-time linking, disable default features:
+
+```toml
+cros-libva = { version = "0.1", default-features = false }
+```
+
+This restores the old `pkg-config --libs libva libva-drm` link (`-lva -lva-drm`). You can also explicitly enable `linked` (alias, currently no-op) to document intent.
+
+Headers are still needed at build time unless `vendored` is enabled (bundles `libva/va/va.h` from the submodule). The libva version needs to be 1.20.0 or newer. The VA-API driver corresponding to your hardware is also required: for Intel hardware it will be [intel-media-driver](https://github.com/intel/media-driver), whereas AMD hardware relies on [Mesa](https://gitlab.freedesktop.org/mesa/mesa).
 
 An easy way to see whether everything is in order is to run the `vainfo`
 utility packaged with `libva-utils` or as a standalone package in some
@@ -63,7 +68,7 @@ recommended to rename it to just `libva` in your project by using the following
 line in your `Cargo.toml`:
 
 ```
-libva = { package = "cros-libva", version = "0.0.1" }
+libva = { package = "cros-libva", version = "0.1" }
 ```
 
 ## Testing

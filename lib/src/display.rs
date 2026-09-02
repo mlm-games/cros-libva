@@ -46,18 +46,14 @@ impl Iterator for DrmDeviceIterator {
     type Item = PathBuf;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.cur_idx {
-            idx if idx >= DRM_RENDER_NODE_START + DRM_NUM_NODES => None,
-            idx => {
-                let path = PathBuf::from(format!("{}{}", DRM_NODE_DEFAULT_PREFIX, idx));
-                if !path.exists() {
-                    None
-                } else {
-                    self.cur_idx += 1;
-                    Some(path)
-                }
+        while self.cur_idx < DRM_RENDER_NODE_START + DRM_NUM_NODES {
+            let path = PathBuf::from(format!("{}{}", DRM_NODE_DEFAULT_PREFIX, self.cur_idx));
+            self.cur_idx += 1;
+            if path.exists() {
+                return Some(path);
             }
         }
+        None
     }
 }
 
@@ -102,7 +98,7 @@ impl Display {
 
         // Safe because fd represents a valid file descriptor and the pointer is checked for
         // NULL afterwards.
-        let display = unsafe { bindings::vaGetDisplayDRM(file.as_raw_fd()) };
+        let display = unsafe { crate::va::vaGetDisplayDRM(file.as_raw_fd()) };
         if display.is_null() {
             return Err(OpenDrmDisplayError::VaGetDisplayDrm);
         }
@@ -111,7 +107,7 @@ impl Display {
         let mut minor = 0i32;
         // Safe because we ensure that the display is valid (i.e not NULL) before calling
         // vaInitialize. The File will close the DRM fd on drop.
-        va_check(unsafe { bindings::vaInitialize(display, &mut major, &mut minor) })
+        va_check(unsafe { crate::va::vaInitialize(display, &mut major, &mut minor) })
             .map(|()| {
                 Arc::new(Self {
                     handle: display,
@@ -146,13 +142,13 @@ impl Display {
     /// Queries supported profiles by this display by wrapping `vaQueryConfigProfiles`.
     pub fn query_config_profiles(&self) -> Result<Vec<bindings::VAProfile::Type>, VaError> {
         // Safe because `self` represents a valid VADisplay.
-        let mut max_num_profiles = unsafe { bindings::vaMaxNumProfiles(self.handle) };
+        let mut max_num_profiles = unsafe { crate::va::vaMaxNumProfiles(self.handle) };
         let mut profiles = Vec::with_capacity(max_num_profiles as usize);
 
         // Safe because `self` represents a valid `VADisplay` and the vector has `max_num_profiles`
         // as capacity.
         va_check(unsafe {
-            bindings::vaQueryConfigProfiles(
+            crate::va::vaQueryConfigProfiles(
                 self.handle,
                 profiles.as_mut_ptr(),
                 &mut max_num_profiles,
@@ -176,7 +172,7 @@ impl Display {
     /// 2.0.0.32L.0005`.
     pub fn query_vendor_string(&self) -> std::result::Result<String, &'static str> {
         // Safe because `self` represents a valid VADisplay.
-        let vendor_string = unsafe { bindings::vaQueryVendorString(self.handle) };
+        let vendor_string = unsafe { crate::va::vaQueryVendorString(self.handle) };
 
         if vendor_string.is_null() {
             return Err("vaQueryVendorString() returned NULL");
@@ -194,13 +190,13 @@ impl Display {
         profile: bindings::VAProfile::Type,
     ) -> Result<Vec<bindings::VAEntrypoint::Type>, VaError> {
         // Safe because `self` represents a valid VADisplay.
-        let mut max_num_entrypoints = unsafe { bindings::vaMaxNumEntrypoints(self.handle) };
+        let mut max_num_entrypoints = unsafe { crate::va::vaMaxNumEntrypoints(self.handle) };
         let mut entrypoints = Vec::with_capacity(max_num_entrypoints as usize);
 
         // Safe because `self` represents a valid VADisplay and the vector has `max_num_entrypoints`
         // as capacity.
         va_check(unsafe {
-            bindings::vaQueryConfigEntrypoints(
+            crate::va::vaQueryConfigEntrypoints(
                 self.handle,
                 profile,
                 entrypoints.as_mut_ptr(),
@@ -232,7 +228,7 @@ impl Display {
         // Safe because `self` represents a valid VADisplay. The slice length is passed to the C
         // function, so it is impossible to write past the end of the slice's storage by mistake.
         va_check(unsafe {
-            bindings::vaGetConfigAttributes(
+            crate::va::vaGetConfigAttributes(
                 self.handle,
                 profile,
                 entrypoint,
@@ -328,14 +324,14 @@ impl Display {
     /// Returns available image formats for this display by wrapping around `vaQueryImageFormats`.
     pub fn query_image_formats(&self) -> Result<Vec<bindings::VAImageFormat>, VaError> {
         // Safe because `self` represents a valid VADisplay.
-        let mut num_image_formats = unsafe { bindings::vaMaxNumImageFormats(self.handle) };
+        let mut num_image_formats = unsafe { crate::va::vaMaxNumImageFormats(self.handle) };
         let mut image_formats = Vec::with_capacity(num_image_formats as usize);
 
         // Safe because `self` represents a valid VADisplay. The `image_formats` vector is properly
         // initialized and a valid size is passed to the C function, so it is impossible to write
         // past the end of their storage by mistake.
         va_check(unsafe {
-            bindings::vaQueryImageFormats(
+            crate::va::vaQueryImageFormats(
                 self.handle,
                 image_formats.as_mut_ptr(),
                 &mut num_image_formats,
@@ -356,7 +352,7 @@ impl Drop for Display {
     fn drop(&mut self) {
         // Safe because `self` represents a valid VADisplay.
         unsafe {
-            bindings::vaTerminate(self.handle);
+            crate::va::vaTerminate(self.handle);
             // The File will close the DRM fd on drop.
         }
     }

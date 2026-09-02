@@ -316,7 +316,7 @@ impl Buffer {
         // be correct, as `ptr` is just a cast to `*c_void` from a Rust struct, and `size` is
         // computed from `std::mem::size_of_val`.
         va_check(unsafe {
-            bindings::vaCreateBuffer(
+            crate::va::vaCreateBuffer(
                 context.display().handle(),
                 context.id(),
                 type_.inner(),
@@ -390,7 +390,7 @@ impl Buffer {
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
         // be correct.
         va_check(unsafe {
-            bindings::vaCreateBuffer(
+            crate::va::vaCreateBuffer(
                 context.display().handle(),
                 context.id(),
                 type_.inner(),
@@ -413,11 +413,11 @@ impl Drop for Buffer {
         // Safe because `self` represents a valid buffer, created with
         // vaCreateBuffers.
         let status = va_check(unsafe {
-            bindings::vaDestroyBuffer(self.context.display().handle(), self.id)
+            crate::va::vaDestroyBuffer(self.context.display().handle(), self.id)
         });
 
-        if status.is_err() {
-            error!("vaDestroyBuffer failed: {}", status.unwrap_err());
+        if let Err(e) = status {
+            error!("vaDestroyBuffer failed: {}", e);
         }
     }
 }
@@ -664,7 +664,7 @@ impl<'p> MappedCodedBuffer<'p> {
         let mut segments = Vec::new();
 
         va_check(unsafe {
-            bindings::vaMapBuffer(buffer.0.context.display().handle(), buffer.id(), &mut addr)
+            crate::va::vaMapBuffer(buffer.0.context.display().handle(), buffer.id(), &mut addr)
         })?;
 
         while !addr.is_null() {
@@ -702,11 +702,11 @@ impl<'p> MappedCodedBuffer<'p> {
 impl<'p> Drop for MappedCodedBuffer<'p> {
     fn drop(&mut self) {
         let status = va_check(unsafe {
-            bindings::vaUnmapBuffer(self.buffer.0.context.display().handle(), self.buffer.id())
+            crate::va::vaUnmapBuffer(self.buffer.0.context.display().handle(), self.buffer.id())
         });
 
-        if status.is_err() {
-            error!("vaUnmapBuffer failed: {}", status.unwrap_err());
+        if let Err(e) = status {
+            error!("vaUnmapBuffer failed: {}", e);
         }
     }
 }

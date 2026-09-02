@@ -17,6 +17,7 @@ mod image;
 mod picture;
 mod surface;
 mod usage_hint;
+mod va;
 
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_1 as VADRMPRIMESurfaceDescriptorObject;
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_2 as VADRMPRIMESurfaceDescriptorLayer;
@@ -48,12 +49,14 @@ impl std::fmt::Display for VaError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::ffi::CStr;
 
-        // Safe because `vaErrorStr` will return a pointer to a statically allocated, null
-        // terminated C string. The pointer is guaranteed to never be null.
-        let err_str = unsafe { CStr::from_ptr(bindings::vaErrorStr(self.0.get())) }
-            .to_str()
-            .unwrap();
-        f.write_str(err_str)
+        let ptr = unsafe { va::vaErrorStr(self.0.get()) };
+        if ptr.is_null() {
+            return write!(f, "VA error {} (vaErrorStr returned NULL)", self.0.get());
+        }
+        // Safe because `vaErrorStr` returns a pointer to a statically allocated,
+        // null-terminated C string on success (checked for null above).
+        let err_str = unsafe { CStr::from_ptr(ptr) }.to_string_lossy();
+        f.write_str(&err_str)
     }
 }
 
@@ -66,7 +69,9 @@ impl std::error::Error for VaError {}
 fn va_check(code: VAStatus) -> Result<(), VaError> {
     match code as u32 {
         bindings::VA_STATUS_SUCCESS => Ok(()),
-        _ => Err(VaError(unsafe { NonZeroI32::new_unchecked(code) })),
+        _ => Err(VaError(
+            NonZeroI32::new(code).expect("VAStatus should not be VA_STATUS_SUCCESS here"),
+        )),
     }
 }
 

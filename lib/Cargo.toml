@@ -1,16 +1,20 @@
 [package]
 name = "cros-libva"
-version = "0.0.15"
+version = "0.1.0"
 license = "BSD-3-Clause"
 description = "Safe bindings over libva"
 repository = "https://github.com/chromeos/cros-libva"
 authors = ["The Chromium OS Authors"]
 edition = "2024"
+rust-version = "1.88"
 
 readme.workspace = true
 
 [features]
-dlopen = []
+default = ["dlopen"]
+dlopen = ["dep:libloading"]
+# static linking via pkg-config (woudld anyway require default=false so kinda redundant).
+linked = []
 vendored = []
 intel-protected-content-headers = []
 
@@ -18,6 +22,7 @@ intel-protected-content-headers = []
 thiserror = "2"
 bitflags = "2.13"
 log = "0.4"
+libloading = { version = "0.9", optional = true }
 
 [build-dependencies]
 bindgen = "0.72"

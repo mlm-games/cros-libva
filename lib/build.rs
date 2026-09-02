@@ -22,6 +22,16 @@ const WRAPPER_PATH: &str = "libva-wrapper.h";
 
 // Return VA_MAJOR_VERSION and VA_MINOR_VERSION from va_version.h.
 fn get_va_version(va_h_path: &str) -> (u32, u32) {
+    use std::sync::LazyLock;
+
+    static VERSION_RES: LazyLock<[Regex; 2]> = LazyLock::new(|| {
+        [
+            Regex::new(r"#define VA_MAJOR_VERSION\s*[0-9]+").unwrap(),
+            Regex::new(r"#define VA_MINOR_VERSION\s*[0-9]+").unwrap(),
+        ]
+    });
+    static NUMBER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9]+").unwrap());
+
     let va_version_h_path = Path::new(va_h_path).join("va/va_version.h");
     assert!(
         va_version_h_path.exists(),
@@ -37,7 +47,7 @@ fn get_va_version(va_h_path: &str) -> (u32, u32) {
     ];
     let mut numbers: [u32; 2] = [0; 2];
     for i in 0..2 {
-        let re = Regex::new(VERSION_REGEX_STRINGS[i]).unwrap();
+        let re = &VERSION_RES[i];
         let match_line = lines
             .clone()
             .filter(|&s| re.is_match(s))
@@ -49,11 +59,7 @@ fn get_va_version(va_h_path: &str) -> (u32, u32) {
             VERSION_REGEX_STRINGS[i],
             match_line
         );
-        let number_str = Regex::new(r"[0-9]+")
-            .unwrap()
-            .find(match_line[0])
-            .unwrap()
-            .as_str();
+        let number_str = NUMBER_RE.find(match_line[0]).unwrap().as_str();
         numbers[i] = number_str.parse::<u32>().unwrap();
     }
 
@@ -164,6 +170,11 @@ fn main() {
         major > desired_major || (major == desired_major && minor >= desired_minor)
     };
 
+    // Ensure rerun if env changes
+    println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_H_PATH_ENV);
+    println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_LIB_PATH_ENV);
+    println!("cargo:rerun-if-env-changed={}", CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV);
+
     // Declare the custom cfg flags to avoid warnings
     println!("cargo::rustc-check-cfg=cfg(libva_1_23_or_higher)");
     println!("cargo::rustc-check-cfg=cfg(libva_1_21_or_higher)");
@@ -242,12 +253,12 @@ fn main() {
     if std::env::var("CARGO_FEATURE_INTEL_PROTECTED_CONTENT_HEADERS").is_ok() {
         println!("cargo:warning=Building with intel protected content headers!");
         bindings_builder = bindings_builder.clang_arg("-DINTEL_PROTECTED_CONTENT_HEADERS");
-        let va_p_h_path_env = env::var(CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV);
-        if va_p_h_path_env.is_ok() {
-            let va_p_h_path = va_p_h_path_env.unwrap();
+        if let Ok(va_p_h_path) = env::var(CROS_LIBVA_PROTECTED_CONTENT_H_PATH_ENV) {
             bindings_builder = bindings_builder.clang_arg(format!("-I{}", va_p_h_path));
         }
     }
+    println!("cargo:rerun-if-changed={}", WRAPPER_PATH);
+    println!("cargo:rerun-if-changed=bindgen_gen.rs");
     let bindings = bindings_builder
         .generate()
         .expect("unable to generate bindings");

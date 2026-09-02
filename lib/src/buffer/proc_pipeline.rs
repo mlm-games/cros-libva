@@ -5,7 +5,7 @@
 //! Wrappers around `VAProcPipeline` types.
 
 use crate::bindings;
-use std::{marker::PhantomData, ptr};
+use std::ptr;
 
 /// Wrapper over the `VABlendState` ffi type.
 pub struct BlendState(bindings::VABlendState);

@@ -156,7 +156,7 @@ impl<T> Picture<PictureNew, T> {
         // Safe because `self.inner.context` represents a valid VAContext and
         // `self.inner.surface` represents a valid VASurface.
         let res = va_check(unsafe {
-            bindings::vaBeginPicture(
+            crate::va::vaBeginPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
                 self.surface().id(),
@@ -178,7 +178,7 @@ impl<T> Picture<PictureBegin, T> {
         // passed to the C function, so it is impossible to write past the end of the vector's
         // storage by mistake.
         va_check(unsafe {
-            bindings::vaRenderPicture(
+            crate::va::vaRenderPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
                 Buffer::as_id_vec(&self.inner.buffers).as_mut_ptr(),
@@ -197,7 +197,7 @@ impl<T> Picture<PictureRender, T> {
     pub fn end(self) -> Result<Picture<PictureEnd, T>, VaError> {
         // Safe because `self.inner.context` represents a valid `VAContext`.
         va_check(unsafe {
-            bindings::vaEndPicture(
+            crate::va::vaEndPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
             )
