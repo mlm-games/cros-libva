@@ -233,3 +233,147 @@ impl<'a> Drop for Image<'a> {
         }
     }
 }
+
+/// A `VAImage` and its device memory, created once and reused for many surfaces.
+///
+/// Unlike [`Image`], which is created from (and borrows) one surface and can be
+/// put back into it, a detached image is a plain destination: each
+/// [`DetachedImage::get_from`] copies a surface's picture into it and
+/// [`DetachedImage::map`] borrows the mapped copy for as long as it is held.
+/// A reader creates one per stream and pays `vaCreateImage` once instead of
+/// once per frame.
+pub struct DetachedImage {
+    display: Arc<Display>,
+    image: bindings::VAImage,
+    display_resolution: (u32, u32),
+}
+
+impl DetachedImage {
+    /// Create an image in `format` for pictures of `coded_resolution`; the
+    /// implementation may enlarge it. `visible_rect` is reported by
+    /// [`DetachedImage::display_resolution`].
+    pub fn create(
+        display: &Arc<Display>,
+        mut format: bindings::VAImageFormat,
+        coded_resolution: (u32, u32),
+        visible_rect: (u32, u32),
+    ) -> Result<Self, VaError> {
+        // An all-zero byte-pattern is a valid initial value for `VAImage`.
+        let mut image: bindings::VAImage = Default::default();
+        // Safe because `dpy` is a valid display handle.
+        va_check(unsafe {
+            crate::va::vaCreateImage(
+                display.handle(),
+                &mut format,
+                coded_resolution.0 as i32,
+                coded_resolution.1 as i32,
+                &mut image,
+            )
+        })?;
+        Ok(Self {
+            display: Arc::clone(display),
+            image,
+            display_resolution: visible_rect,
+        })
+    }
+
+    /// Copy `surface`'s picture into the image (`vaGetImage`).
+    pub fn get_from<D: SurfaceMemoryDescriptor>(
+        &mut self,
+        surface: &Surface<D>,
+    ) -> Result<(), VaError> {
+        // Safe because the display is valid and the image was created on it;
+        // the surface is a valid surface of the same display.
+        va_check(unsafe {
+            crate::va::vaGetImage(
+                self.display.handle(),
+                surface.id(),
+                0,
+                0,
+                u32::from(self.image.width),
+                u32::from(self.image.height),
+                self.image.image_id,
+            )
+        })
+    }
+
+    /// The underlying `VAImage` (format, pitches, offsets, size).
+    pub fn image(&self) -> &bindings::VAImage {
+        &self.image
+    }
+
+    /// The display resolution requested by the client.
+    pub fn display_resolution(&self) -> (u32, u32) {
+        self.display_resolution
+    }
+
+    /// Map the image's data (`vaMapBuffer`); the mapping is released when it
+    /// is dropped. Map after [`DetachedImage::get_from`], and hold the mapping
+    /// only while reading.
+    pub fn map(&self) -> Result<ImageMapping<'_>, VaError> {
+        let mut addr = std::ptr::null_mut();
+        // Safe because the display is valid and `image.buf` is a live buffer
+        // made for this image.
+        va_check(unsafe {
+            crate::va::vaMapBuffer(self.display.handle(), self.image.buf, &mut addr)
+        })?;
+        if addr.is_null() {
+            // Safe because the buffer was mapped above.
+            unsafe { crate::va::vaUnmapBuffer(self.display.handle(), self.image.buf) };
+            return Err(VaError(
+                std::num::NonZeroI32::new(bindings::VA_STATUS_ERROR_OPERATION_FAILED as i32)
+                    .expect("VA_STATUS_ERROR_OPERATION_FAILED is non-zero"),
+            ));
+        }
+        // Safe because `addr` points to `image.data_size` bytes mapped by
+        // `vaMapBuffer` above, valid until the mapping is dropped.
+        let data = unsafe {
+            std::slice::from_raw_parts(addr.cast::<u8>().cast_const(), self.image.data_size as usize)
+        };
+        Ok(ImageMapping {
+            display: &self.display,
+            buf: self.image.buf,
+            data,
+        })
+    }
+}
+
+impl Drop for DetachedImage {
+    fn drop(&mut self) {
+        // Safe because `self.image` is a live image made on this display and
+        // no mapping of it is alive (the mapping borrows `self`).
+        unsafe {
+            crate::va::vaDestroyImage(self.display.handle(), self.image.image_id);
+        }
+    }
+}
+
+/// The mapped data of a [`DetachedImage`]; unmaps on drop. The image cannot
+/// be destroyed or re-fetched while this is alive (`&DetachedImage` borrow).
+pub struct ImageMapping<'a> {
+    display: &'a Display,
+    buf: u32,
+    data: &'a [u8],
+}
+
+impl std::ops::Deref for ImageMapping<'_> {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        self.data
+    }
+}
+
+impl AsRef<[u8]> for ImageMapping<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.data
+    }
+}
+
+impl Drop for ImageMapping<'_> {
+    fn drop(&mut self) {
+        // Safe because the buffer was mapped by `DetachedImage::map`.
+        unsafe {
+            crate::va::vaUnmapBuffer(self.display.handle(), self.buf);
+        }
+    }
+}

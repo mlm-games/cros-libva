@@ -110,35 +110,6 @@ fn main() {
         return;
     }
 
-    // For non-Linux targets (wasm, windows, macos, etc.) we emit empty
-    // bindings so the crate still builds on your arch matrix (like
-    // clipawl/repose). Real VA-API is Linux(+Android) only; stub is
-    // intentionally empty – see oxideav-vaapi cfg(target_os="linux").
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if target_os != "linux" && target_os != "android" {
-        let out_dir = PathBuf::from(env::var("OUT_DIR").expect("`OUT_DIR` is not set"));
-        // Minimal valid bindings so `include!(OUT_DIR/bindings.rs)` compiles on wasm/android/windows.
-        std::fs::write(
-            out_dir.join("bindings.rs"),
-            "// non-linux stub for wasm/android cross builds\n",
-        )
-        .unwrap();
-        // Provide default cfgs so lib.rs cfg gates still compile.
-        for flag in [
-            "libva_1_10_or_higher",
-            "libva_1_14_or_higher",
-            "libva_1_15_or_higher",
-            "libva_1_16_or_higher",
-            "libva_1_19_or_higher",
-            "libva_1_20_or_higher",
-            "libva_1_21_or_higher",
-            "libva_1_23_or_higher",
-        ] {
-            println!("cargo::rustc-check-cfg=cfg({flag})");
-        }
-        return;
-    }
-
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("`OUT_DIR` is not set"));
     let manifest_dir =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("`CARGO_MANIFEST_DIR` is not set"));
@@ -179,7 +150,6 @@ fn main() {
                             .clone()
                             .into_os_string()
                             .into_string()
-<<<<<<< Updated upstream
                             .unwrap();
                         let (major, minor) = get_va_version(&va_h_path);
                         (va_h_path, major, minor)
@@ -202,48 +172,13 @@ fn main() {
                                 .unwrap();
                             (va_h_path, major, minor)
                         } else {
-=======
-                            .unwrap()),
-                        Err(e) => {
-                            // For android cross (no sysroot) don't panic – stub so your
-                            // arch matrix (cargo-rapk aarch64-linux-android) still checks.
-                            if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("android") {
-                                println!("cargo:warning=libva not found for android cross ({}), stubbing bindings", e);
-                                // Signal stub via empty path – handled below.
-                                return Ok(String::new());
-                            }
->>>>>>> Stashed changes
                             panic!("libva is not found in system: {}", e)
                         }
                     }
                 }
-<<<<<<< Updated upstream
             }
             Err(e) => panic!("{}: {}", CROS_LIBVA_H_PATH_ENV, e),
         }
-=======
-            })
-            .expect("libva header location is unknown");
-        if va_h_path.is_empty() {
-            // android stub signal – emit empty bindings and exit early.
-            for flag in [
-                "libva_1_10_or_higher",
-                "libva_1_14_or_higher",
-                "libva_1_15_or_higher",
-                "libva_1_16_or_higher",
-                "libva_1_19_or_higher",
-                "libva_1_20_or_higher",
-                "libva_1_21_or_higher",
-                "libva_1_23_or_higher",
-            ] {
-                println!("cargo::rustc-check-cfg=cfg({flag})");
-            }
-            std::fs::write(out_dir.join("bindings.rs"), "// android cross stub\n").unwrap();
-            return;
-        }
-        let (major, minor) = get_va_version(&va_h_path);
-        (va_h_path, major, minor)
->>>>>>> Stashed changes
     };
 
     // Check the path exists.
