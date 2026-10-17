@@ -7,37 +7,70 @@
 //! The starting point to using this crate is to open a [`Display`], from which a [`Context`] and
 //! [`Surface`]s can be allocated and used for doing actual work.
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod bindings;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod buffer;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod config;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod context;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod display;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod generic_value;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod image;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod picture;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod surface;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod usage_hint;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 mod va;
 
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+mod stub;
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+pub use stub::{
+    Display, VABufferID, VAConfigID, VAContextID, VADisplay, VAStatus, VASurfaceID, VaError,
+};
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_1 as VADRMPRIMESurfaceDescriptorObject;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_2 as VADRMPRIMESurfaceDescriptorLayer;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use bindings::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use buffer::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use config::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use context::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use display::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use generic_value::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use image::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use picture::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use surface::*;
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub use usage_hint::*;
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 use std::num::NonZeroI32;
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 /// A `VAStatus` that is guaranteed to not be `VA_STATUS_SUCCESS`.
 #[derive(Debug)]
 pub struct VaError(NonZeroI32);
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl VaError {
     /// Returns the `VAStatus` of this error.
     pub fn va_status(&self) -> VAStatus {
@@ -45,6 +78,7 @@ impl VaError {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl std::fmt::Display for VaError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::ffi::CStr;
@@ -60,8 +94,10 @@ impl std::fmt::Display for VaError {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl std::error::Error for VaError {}
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
 /// Checks a VA return value and returns a `VaError` if it is not `VA_STATUS_SUCCESS`.
 ///
 /// This can be used on the return value of any VA function returning `VAStatus` in order to
@@ -75,7 +111,7 @@ fn va_check(code: VAStatus) -> Result<(), VaError> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(target_os = "linux", target_os = "android")))]
 mod tests {
     use std::io::Write;
     use std::rc::Rc;
